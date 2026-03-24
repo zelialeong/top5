@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WWRD — The Needle Check</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Mono:wght@300;400&display=swap');
+
+  :root {
+    --ink: #1a1714;
+    --paper: #f5f0e8;
+    --warm-mid: #c8b89a;
+    --warm-dark: #8b7355;
+    --green: #3d6b4f;
+    --green-light: #e8f2ec;
+    --yellow: #8b6914;
+    --yellow-light: #fdf3d0;
+    --red: #7a2e2e;
+    --red-light: #fae8e8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 20px 80px;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(200,184,154,0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(139,115,85,0.15) 0%, transparent 50%);
+    overflow-x: hidden;
+  }
+
+  .header { text-align: center; margin-bottom: 28px; }
+
+  .header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  .header h1 em { font-style: italic; color: var(--warm-dark); }
+
+  .header p {
+    font-size: 0.6rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--warm-dark); margin-top: 8px;
+  }
+
+  .divider { width: 48px; height: 1px; background: var(--warm-mid); margin: 12px auto; }
+
+  .header-note {
+    font-size: 0.58rem; color: var(--warm-mid); letter-spacing: 0.05em;
+    line-height: 1.6; margin-top: 10px; font-style: italic;
+  }
+
+  .screen { display: none; width: 100%; max-width: 480px; }
+  .screen.active { display: block; animation: fadeUp 0.3s ease forwards; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(200,184,154,0.45);
+    border-radius: 2px;
+    padding: 32px;
+    box-shadow: 0 4px 40px rgba(139,115,85,0.1);
+  }
+
+  .step-label {
+    font-size: 0.58rem; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--warm-dark); margin-bottom: 6px;
+  }
+
+  .step-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.55rem; font-weight: 400; margin-bottom: 20px; line-height: 1.25;
+  }
+
+  .intake-textarea {
+    width: 100%;
+    background: rgba(245,240,232,0.8);
+    border: 1px solid var(--warm-mid);
+    border-radius: 2px;
+    padding: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; color: var(--ink);
+    resize: none; height: 96px; outline: none;
+    transition: border-color 0.2s; line-height: 1.65;
+  }
+  .intake-textarea:focus { border-color: var(--ink); }
+  .intake-textarea::placeholder { color: var(--warm-mid); }
+
+  .btn {
+    display: inline-block; padding: 11px 28px;
+    background: var(--ink); color: var(--paper);
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    border: none; cursor: pointer; margin-top: 14px; transition: background 0.2s;
+  }
+  .btn:hover { background: var(--warm-dark); }
+
+  .btn-ghost {
+    background: none; border: 1px solid var(--warm-mid); color: var(--warm-dark);
+    padding: 10px 22px; font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s; margin-right: 8px;
+  }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+  .progress-dots {
+    display: flex; justify-content: center; gap: 7px; margin-bottom: 24px;
+  }
+
+  .pdot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--warm-mid); transition: all 0.25s;
+  }
+  .pdot.done-yes { background: var(--green); }
+  .pdot.done-no  { background: var(--red); }
+  .pdot.current  { background: var(--ink); transform: scale(1.35); }
+
+  .swipe-area {
+    position: relative; height: 290px; margin-bottom: 20px;
+  }
+
+  .swipe-area::before {
+    content: '';
+    position: absolute; inset: 12px 14px 0;
+    background: rgba(255,255,255,0.3);
+    border: 1px solid rgba(200,184,154,0.3);
+    border-radius: 2px; z-index: 0;
+  }
+
+  .swipe-card {
+    position: absolute; inset: 0;
+    background: white;
+    border: 1px solid rgba(200,184,154,0.5);
+    border-radius: 2px; padding: 26px 22px 20px;
+    z-index: 2; cursor: grab; touch-action: pan-y; user-select: none;
+    box-shadow: 0 6px 32px rgba(139,115,85,0.12);
+    display: flex; flex-direction: column; justify-content: space-between;
+    will-change: transform;
+  }
+
+  .swipe-card:active { cursor: grabbing; }
+  .swipe-card.fly-out {
+    transition: transform 0.32s cubic-bezier(.4,0,.2,1), opacity 0.32s ease;
+  }
+
+  .swipe-badge {
+    position: absolute; top: 18px;
+    font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 4px 11px; border-radius: 2px;
+    font-family: 'DM Mono', monospace; opacity: 0; pointer-events: none;
+  }
+  .badge-yes { right: 18px; background: var(--green-light); color: var(--green); border: 1.5px solid var(--green); }
+  .badge-no  { left: 18px;  background: var(--red-light);   color: var(--red);   border: 1.5px solid var(--red); }
+
+  .card-goal-num {
+    font-size: 0.56rem; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--warm-mid); margin-bottom: 3px;
+  }
+
+  .card-goal-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem; font-weight: 500;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 7px;
+  }
+
+  .card-question {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem; font-weight: 300; font-style: italic;
+    line-height: 1.42; color: var(--ink);
+    flex: 1; display: flex; align-items: center;
+  }
+
+  .card-rule {
+    font-size: 0.57rem; color: var(--warm-dark);
+    letter-spacing: 0.04em; line-height: 1.55; margin-top: 14px;
+    padding-top: 12px; border-top: 1px solid rgba(200,184,154,0.4);
+  }
+
+  .swipe-hint {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 0 4px; margin-bottom: 14px;
+  }
+
+  .hint-side { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .hint-arrow { font-size: 1rem; color: var(--warm-mid); }
+  .hint-label { font-size: 0.53rem; letter-spacing: 0.15em; text-transform: uppercase; }
+  .hint-label.no-label  { color: var(--red);   opacity: 0.55; }
+  .hint-label.yes-label { color: var(--green); opacity: 0.55; }
+  .hint-center { font-size: 0.52rem; color: var(--warm-mid); letter-spacing: 0.1em; }
+
+  .swipe-buttons { display: flex; gap: 10px; }
+
+  .swipe-btn {
+    flex: 1; padding: 12px; border-radius: 2px;
+    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s; border: 1.5px solid;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .swipe-btn-no  { background: var(--red-light);   border-color: var(--red);   color: var(--red); }
+  .swipe-btn-no:hover  { background: var(--red);   color: white; }
+  .swipe-btn-yes { background: var(--green-light); border-color: var(--green); color: var(--green); }
+  .swipe-btn-yes:hover { background: var(--green); color: white; }
+
+  .decision-echo {
+    font-size: 0.63rem; color: var(--warm-dark);
+    background: rgba(200,184,154,0.15); border-radius: 2px;
+    padding: 9px 13px; margin-bottom: 16px; font-style: italic;
+    line-height: 1.5; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+
+  .verdict-box {
+    text-align: center; padding: 26px 16px;
+    border-radius: 2px; margin-bottom: 18px;
+  }
+  .verdict-box.green  { background: var(--green-light);  border: 1px solid var(--green); }
+  .verdict-box.yellow { background: var(--yellow-light); border: 1px solid var(--yellow); }
+  .verdict-box.red    { background: var(--red-light);    border: 1px solid var(--red); }
+
+  .needle-visual { font-size: 2rem; margin-bottom: 9px; display: block; }
+
+  .verdict-label {
+    font-size: 0.57rem; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 5px;
+  }
+  .verdict-box.green  .verdict-label { color: var(--green); }
+  .verdict-box.yellow .verdict-label { color: var(--yellow); }
+  .verdict-box.red    .verdict-label { color: var(--red); }
+
+  .verdict-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.65rem; font-weight: 400; margin-bottom: 8px;
+  }
+  .verdict-box.green  .verdict-title { color: var(--green); }
+  .verdict-box.yellow .verdict-title { color: var(--yellow); }
+  .verdict-box.red    .verdict-title { color: var(--red); }
+
+  .verdict-message {
+    font-size: 0.7rem; line-height: 1.7; color: var(--ink);
+    max-width: 360px; margin: 0 auto;
+  }
+
+  .scorecard { display: flex; flex-direction: column; gap: 5px; margin-bottom: 18px; }
+
+  .scorecard-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 11px; border-radius: 2px; font-size: 0.62rem;
+  }
+  .scorecard-row.yes { background: var(--green-light); }
+  .scorecard-row.no  { background: rgba(200,184,154,0.12); }
+
+  .sc-icon { font-size: 0.88rem; }
+  .sc-name { flex: 1; }
+  .sc-result { font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .scorecard-row.yes .sc-result { color: var(--green); }
+  .scorecard-row.no  .sc-result { color: var(--warm-dark); opacity: 0.6; }
+
+  .reflection-box {
+    background: rgba(245,240,232,0.6); border-left: 3px solid var(--warm-mid);
+    padding: 16px; margin-bottom: 20px;
+  }
+  .reflection-label {
+    font-size: 0.53rem; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--warm-dark); margin-bottom: 6px;
+  }
+  .reflection-box p {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem; font-style: italic; line-height: 1.65; color: var(--ink);
+  }
+
+  .history-section { width: 100%; max-width: 480px; margin-top: 32px; }
+  .history-title {
+    font-size: 0.57rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--warm-mid); margin-bottom: 9px; text-align: center;
+  }
+  .history-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid rgba(200,184,154,0.25);
+    font-size: 0.62rem; gap: 10px;
+  }
+  .history-decision {
+    flex: 1; font-style: italic; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis; color: var(--ink);
+  }
+  .history-pill {
+    padding: 3px 9px; border-radius: 2px; font-size: 0.53rem;
+    letter-spacing: 0.1em; flex-shrink: 0;
+  }
+  .history-pill.green  { background: var(--green-light);  color: var(--green); }
+  .history-pill.yellow { background: var(--yellow-light); color: var(--yellow); }
+  .history-pill.red    { background: var(--red-light);    color: var(--red); }
+
+  .history-clear {
+    font-size: 0.53rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--warm-mid); background: none; border: none; cursor: pointer;
+    margin-top: 9px; display: block; margin-left: auto;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>The <em>Needle</em> Check</h1>
+  <div class="divider"></div>
+  <p>Optimising for what really moves the needle</p>
+  <div class="header-note">Use this for things that are asking for a chunk of your calendar,<br>energy, or focus. If not, just go live your life.</div>
+</div>
+
+<!-- STEP 1: INTAKE -->
+<div class="screen active" id="screen-intake">
+  <div class="card">
+    <div class="step-label">Step 1 — The What</div>
+    <div class="step-title">What are you considering?</div>
+    <textarea class="intake-textarea" id="decisionInput"
+      placeholder="e.g. Meeting with a difficult client for a low-margin project…"></textarea>
+    <button class="btn" onclick="startSwipe()">Begin the Filter →</button>
+  </div>
+</div>
+
+<!-- STEP 2: SWIPE -->
+<div class="screen" id="screen-swipe">
+  <div class="progress-dots" id="progressDots"></div>
+
+  <div class="swipe-area">
+    <div class="swipe-card" id="swipeCard"
+      ontouchstart="touchStart(event)"
+      ontouchmove="touchMove(event)"
+      ontouchend="touchEnd(event)"
+      onmousedown="mouseDown(event)">
+
+      <div class="swipe-badge badge-yes" id="badgeYes">Yes ✓</div>
+      <div class="swipe-badge badge-no"  id="badgeNo">✗ No</div>
+
+      <div>
+        <div class="card-goal-num"  id="cardGoalNum"></div>
+        <div class="card-goal-name" id="cardGoalName"></div>
+        <div class="card-question"  id="cardQuestion"></div>
+      </div>
+      <div class="card-rule" id="cardRule"></div>
+    </div>
+  </div>
+
+  <div class="swipe-hint">
+    <div class="hint-side">
+      <span class="hint-arrow">←</span>
+      <span class="hint-label no-label">No</span>
+    </div>
+    <span class="hint-center">swipe or tap below</span>
+    <div class="hint-side">
+      <span class="hint-arrow">→</span>
+      <span class="hint-label yes-label">Yes</span>
+    </div>
+  </div>
+
+  <div class="swipe-buttons">
+    <button class="swipe-btn swipe-btn-no"  onclick="answer(false)">✗ &nbsp;No</button>
+    <button class="swipe-btn swipe-btn-yes" onclick="answer(true)">Yes &nbsp;✓</button>
+  </div>
+</div>
+
+<!-- STEP 3: VERDICT -->
+<div class="screen" id="screen-verdict">
+  <div class="card">
+    <div class="step-label">Step 3 — The Rob Verdict</div>
+    <div class="step-title">Your Needle Rating</div>
+
+    <div class="decision-echo" id="decisionEcho"></div>
+    <div class="verdict-box" id="verdictBox"></div>
+    <div class="scorecard"   id="scorecard"></div>
+
+    <div class="reflection-box">
+      <div class="reflection-label">Reflection Prompt</div>
+      <p>What would the version of you who has already achieved all 5 goals say about this decision?</p>
+    </div>
+
+    <div>
+      <button class="btn-ghost" onclick="reset()">← Start Over</button>
+      <button class="btn" onclick="saveAndReset()">Save & New Check</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="history-section" id="historySection" style="display:none">
+  <div class="history-title">Recent Checks</div>
+  <div id="historyList"></div>
+  <button class="history-clear" onclick="clearHistory()">Clear History</button>
+</div>
+
+<script>
+const GOALS = [
+  {
+    num: 1, emoji: '🧘', key: 'calm',
+    name: 'Calm Nervous System',
+    question: 'Does this keep my nervous system at ease — free from unnecessary stress or cortisol?',
+    rule: 'If no → can it be automated, delegated, or deleted?'
+  },
+  {
+    num: 2, emoji: '💚', key: 'health',
+    name: 'Physical & Mental Health',
+    question: 'Does this genuinely support my physical and mental longevity?',
+    rule: 'If no → time-box it strictly. Guard sleep, movement, and recovery.'
+  },
+  {
+    num: 3, emoji: '💰', key: 'wealth',
+    name: 'Make $100M',
+    question: 'Is this a high-leverage move toward wealth — not just productive-feeling busy work?',
+    rule: 'If no → ask: can someone else do this, or should it happen at all?'
+  },
+  {
+    num: 4, emoji: '🤝', key: 'depth',
+    name: 'Front Row Relationships',
+    question: 'Does this deepen a bond with someone I\'d want in the front row at my funeral?',
+    rule: 'If no → deprioritise it over time with Front Row people.'
+  },
+  {
+    num: 5, emoji: '🌱', key: 'impact',
+    name: 'Community Impact',
+    question: 'Does this move the needle for a community I genuinely belong to?',
+    rule: 'If no → honest check: is this ego, or is this service?'
+  }
+];
+
+let currentIdx = 0;
+let answers = {};
+let history = JSON.parse(localStorage.getItem('wwrd_history') || '[]');
+
+let dragStartX = 0, dragCurrentX = 0, isDragging = false;
+const $card = () => document.getElementById('swipeCard');
+
+function buildDots() {
+  const c = document.getElementById('progressDots');
+  c.innerHTML = '';
+  GOALS.forEach((g, i) => {
+    const d = document.createElement('div');
+    d.className = 'pdot';
+    if (answers[g.key] === true)       d.classList.add('done-yes');
+    else if (answers[g.key] === false) d.classList.add('done-no');
+    else if (i === currentIdx)         d.classList.add('current');
+    c.appendChild(d);
+  });
+}
+
+function renderCard() {
+  const g = GOALS[currentIdx];
+  document.getElementById('cardGoalNum').textContent  = `Goal ${g.num} of 5`;
+  document.getElementById('cardGoalName').textContent = `${g.emoji}  ${g.name}`;
+  document.getElementById('cardQuestion').textContent = g.question;
+  document.getElementById('cardRule').textContent     = g.rule;
+  document.getElementById('badgeYes').style.opacity   = 0;
+  document.getElementById('badgeNo').style.opacity    = 0;
+  const c = $card();
+  c.style.transition = '';
+  c.style.transform  = '';
+  c.style.opacity    = '';
+  buildDots();
+}
+
+function startSwipe() {
+  const val = document.getElementById('decisionInput').value.trim();
+  if (!val) { document.getElementById('decisionInput').focus(); return; }
+  currentIdx = 0; answers = {};
+  showScreen('screen-swipe');
+  renderCard();
+}
+
+function answer(isYes) {
+  const g = GOALS[currentIdx];
+  answers[g.key] = isYes;
+
+  const c = $card();
+  c.classList.add('fly-out');
+  c.style.transform = `translateX(${isYes ? 500 : -500}px) rotate(${isYes ? 14 : -14}deg)`;
+  c.style.opacity = '0';
+
+  setTimeout(() => {
+    c.classList.remove('fly-out');
+    currentIdx++;
+    if (currentIdx < GOALS.length) renderCard();
+    else showVerdict();
+  }, 330);
+}
+
+function touchStart(e) { dragStartX = e.touches[0].clientX; dragCurrentX = dragStartX; isDragging = true; }
+function touchMove(e)  { if (!isDragging) return; dragCurrentX = e.touches[0].clientX; applyDrag(dragCurrentX - dragStartX); }
+function touchEnd(e)   { if (!isDragging) return; isDragging = false; commitDrag(dragCurrentX - dragStartX); }
+
+function mouseDown(e) {
+  dragStartX = e.clientX; dragCurrentX = e.clientX; isDragging = true;
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+}
+function onMouseMove(e) { if (!isDragging) return; dragCurrentX = e.clientX; applyDrag(dragCurrentX - dragStartX); }
+function onMouseUp(e) {
+  if (!isDragging) return; isDragging = false;
+  document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('mouseup', onMouseUp);
+  commitDrag(dragCurrentX - dragStartX);
+}
+
+function applyDrag(diff) {
+  const c = $card();
+  c.style.transition = '';
+  c.style.transform = `translateX(${diff}px) rotate(${diff * 0.055}deg)`;
+  const p = Math.min(Math.abs(diff) / 90, 1);
+  document.getElementById('badgeYes').style.opacity = diff > 0 ? p : 0;
+  document.getElementById('badgeNo').style.opacity  = diff < 0 ? p : 0;
+}
+
+function commitDrag(diff) {
+  if (Math.abs(diff) > 75) {
+    answer(diff > 0);
+  } else {
+    const c = $card();
+    c.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+    c.style.transform = ''; c.style.opacity = '';
+    document.getElementById('badgeYes').style.opacity = 0;
+    document.getElementById('badgeNo').style.opacity  = 0;
+    setTimeout(() => c.style.transition = '', 230);
+  }
+}
+
+function showVerdict() {
+  const yesCount = Object.values(answers).filter(Boolean).length;
+  const decision = document.getElementById('decisionInput').value.trim();
+
+  let tier, emoji, label, title, message;
+
+  if (yesCount >= 3) {
+    tier = 'green'; emoji = '🟢'; label = 'Full Steam Ahead';
+    title = 'Move the Needle';
+    message = `This serves ${yesCount} of your 5 goals. Commit fully.`;
+  } else if (yesCount >= 1) {
+    const servedNames = GOALS.filter(g => answers[g.key]).map(g => `${g.emoji} ${g.name}`).join(', ');
+    tier = 'yellow'; emoji = '🟡'; label = 'Intentional Single Focus';
+    title = 'Eyes Open';
+    message = `This moves the needle on: ${servedNames}. That's enough — go ahead.`;
+  } else {
+    tier = 'red'; emoji = '🔴'; label = 'The Rob Veto';
+    title = 'Say No or Delegate';
+    message = `This doesn't move your needle on any of your 5 goals. Say no, delegate it, or eliminate it.`;
+  }
+
+  // Foundation warning only when both calm AND health are missed
+  if (!answers['calm'] && !answers['health'] && yesCount >= 1) {
+    message += ` ⚠️ Neither Calm nor Health is served — your engine is running on fumes.`;
+  }
+
+  document.getElementById('decisionEcho').textContent = `"${decision}"`;
+
+  const box = document.getElementById('verdictBox');
+  box.className = `verdict-box ${tier}`;
+  box.innerHTML = `
+    <span class="needle-visual">${emoji}</span>
+    <div class="verdict-label">${label}</div>
+    <div class="verdict-title">${title}</div>
+    <div class="verdict-message">${message}</div>
+  `;
+
+  const sc = document.getElementById('scorecard');
+  sc.innerHTML = '';
+  GOALS.forEach(g => {
+    const yes = answers[g.key];
+    const row = document.createElement('div');
+    row.className = `scorecard-row ${yes ? 'yes' : 'no'}`;
+    row.innerHTML = `
+      <span class="sc-icon">${g.emoji}</span>
+      <span class="sc-name">${g.name}</span>
+      <span class="sc-result">${yes ? '✓ Serves' : '✗ Misses'}</span>
+    `;
+    sc.appendChild(row);
+  });
+
+  showScreen('screen-verdict');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function reset() {
+  document.getElementById('decisionInput').value = '';
+  answers = {}; currentIdx = 0;
+  showScreen('screen-intake');
+}
+
+function saveAndReset() {
+  const decision = document.getElementById('decisionInput').value.trim();
+  const yesCount = Object.values(answers).filter(Boolean).length;
+  const tier = yesCount >= 3 ? 'green' : yesCount >= 1 ? 'yellow' : 'red';
+  history.unshift({ decision, yesCount, tier });
+  if (history.length > 12) history.pop();
+  localStorage.setItem('wwrd_history', JSON.stringify(history));
+  renderHistory();
+  reset();
+}
+
+function renderHistory() {
+  if (!history.length) { document.getElementById('historySection').style.display = 'none'; return; }
+  document.getElementById('historySection').style.display = 'block';
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  history.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `
+      <span class="history-decision">${h.decision}</span>
+      <span class="history-pill ${h.tier}">${h.yesCount}/5 goals</span>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function clearHistory() {
+  history = []; localStorage.removeItem('wwrd_history'); renderHistory();
+}
+
+renderHistory();
+</script>
+</body>
+</html>
